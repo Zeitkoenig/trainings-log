@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Trainings-Log</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="theme-color" content="#181816">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#181816;
+    --card:#232320;
+    --card2:#2b2b27;
+    --line:#3a3a35;
+    --text:#f2f1ea;
+    --muted:#918f84;
+    --accent:#ff6a3d;
+    --accent-dim:#4a2f22;
+    --ok:#5ec98f;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;padding-bottom:env(safe-area-inset-bottom);}
+  .wrap{max-width:640px;margin:0 auto;padding:20px 16px 60px;}
+  h1{font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:700;margin:0 0 2px;letter-spacing:-0.01em;}
+  .sub{color:var(--muted);font-size:13px;margin-bottom:18px;}
+  .weekbar{display:flex;justify-content:space-between;align-items:center;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:16px;}
+  .weekbar .range{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:15px;}
+  .weekbar .daycount{color:var(--muted);font-size:12px;margin-top:2px;}
+  .rows{display:flex;flex-direction:column;gap:8px;margin-bottom:20px;}
+  .row{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px;display:grid;grid-template-columns:60px 1fr 44px 1fr;gap:8px;align-items:center;}
+  .row.today{border-color:var(--accent);}
+  .daylabel{font-size:12px;line-height:1.25;}
+  .daylabel .wd{font-weight:600;color:var(--accent);}
+  .daylabel .full{display:block;color:var(--muted);font-size:11px;}
+  input[type=number]{width:100%;background:var(--card2);border:1px solid var(--line);border-radius:8px;color:var(--text);padding:8px;font-size:14px;font-family:'Space Grotesk',sans-serif;font-weight:700;}
+  input[type=text]{width:100%;background:var(--card2);border:1px solid var(--line);border-radius:8px;color:var(--text);padding:8px;font-size:13px;}
+  .cardio-toggle{width:40px;height:40px;border-radius:8px;border:1px solid var(--line);background:var(--card2);font-size:18px;display:flex;align-items:center;justify-content:center;cursor:pointer;}
+  .cardio-toggle.on{background:var(--accent-dim);border-color:var(--ok);}
+  .cardio-toggle.off{opacity:0.55;}
+  .section{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:10px;}
+  .section label{display:block;font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:6px;}
+  textarea{width:100%;background:var(--card2);border:1px solid var(--line);border-radius:8px;color:var(--text);padding:10px;font-size:14px;font-family:'Inter',sans-serif;resize:vertical;min-height:44px;}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .photogrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .photo-slot{position:relative;background:var(--card2);border:1px dashed var(--line);border-radius:10px;aspect-ratio:3/4;display:flex;align-items:center;justify-content:center;overflow:hidden;cursor:pointer;}
+  .photo-slot span{color:var(--muted);font-size:12px;text-align:center;padding:6px;}
+  .photo-slot img{width:100%;height:100%;object-fit:cover;}
+  .photo-slot input{position:absolute;inset:0;opacity:0;cursor:pointer;}
+  .photo-slot.filled{border-style:solid;border-color:var(--ok);}
+  .actions{display:flex;gap:10px;margin-top:18px;}
+  button.main{flex:1;background:var(--accent);color:#1a1108;border:none;border-radius:10px;padding:14px;font-size:14px;font-weight:700;font-family:'Space Grotesk',sans-serif;cursor:pointer;}
+  button.ghost{background:transparent;color:var(--muted);border:1px solid var(--line);border-radius:10px;padding:14px;font-size:13px;cursor:pointer;}
+  .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--ok);color:#0d1f16;padding:10px 18px;border-radius:20px;font-size:13px;font-weight:600;opacity:0;pointer-events:none;transition:opacity 0.2s;z-index:50;}
+  .toast.show{opacity:1;}
+  .autonote{font-size:11px;color:var(--muted);text-align:center;margin-top:14px;line-height:1.5;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Trainings-Log</h1>
+  <div class="sub">Für Erdem — Datum läuft automatisch, du trägst nur Kg + Haken ein</div>
+
+  <div class="weekbar">
+    <div>
+      <div class="range" id="weekRange">–</div>
+      <div class="daycount" id="dayCount">–</div>
+    </div>
+    <button class="ghost" style="padding:8px 12px;font-size:12px;" onclick="startNewWeek()">Woche neu starten</button>
+  </div>
+
+  <div class="rows" id="rows"></div>
+
+  <div class="section">
+    <label>Essen</label>
+    <textarea id="essen" placeholder="z.B. Alles nach Plan"></textarea>
+  </div>
+
+  <div class="section">
+    <label>Training</label>
+    <textarea id="training" placeholder="z.B. Läuft gut soweit"></textarea>
+  </div>
+
+  <div class="section grid2">
+    <div>
+      <label>Wohlbefinden</label>
+      <textarea id="wohlbefinden" placeholder="ok"></textarea>
+    </div>
+    <div>
+      <label>Schlaf</label>
+      <textarea id="schlaf" placeholder="ok"></textarea>
+    </div>
+  </div>
+
+  <div class="section">
+    <label>Meine Fragen</label>
+    <textarea id="fragen" placeholder="(optional)"></textarea>
+  </div>
+
+  <div class="section">
+    <label>Fotos (4x, frisch für diesen Mittwoch)</label>
+    <div class="photogrid" id="photogrid"></div>
+  </div>
+
+  <div class="actions">
+    <button class="main" onclick="shareAll()">Teilen an Erdem</button>
+  </div>
+  <div class="actions">
+    <button class="ghost" style="flex:1;" onclick="copyText()">Nur Text kopieren</button>
+  </div>
+  <div class="autonote">
+    Speichert automatisch auf diesem Gerät · Text setzt sich nach 7 Tagen selbst zurück<br>
+    Fotos werden nicht gespeichert — bei jedem Versand neu auswählen
+  </div>
+</div>
+
+<div class="toast" id="toast">Kopiert</div>
+
+<script>
+const WD = ['So','Mo','Di','Mi','Do','Fr','Sa'];
+const MONTHS = ['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];
+const STORE_KEY = 'weekly-tracker-v1';
+const PHOTO_LABELS = ['Vorne','Rücken','Seite links','Seite rechts'];
+
+let state = null;
+let photos = [null, null, null, null];
+
+function pad(n){ return n < 10 ? '0'+n : ''+n; }
+function isoDate(d){ return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate()); }
+function addDays(iso, n){ const d = new Date(iso+'T00:00:00'); d.setDate(d.getDate()+n); return d; }
+function formatFull(d){ return WD[d.getDay()]+'., '+d.getDate()+'. '+MONTHS[d.getMonth()]+' '+d.getFullYear(); }
+function todayIso(){ return isoDate(new Date()); }
+
+function defaultState(startIso){
+  return {
+    weekStart: startIso,
+    time: '08:30',
+    days: Array.from({length:7}, () => ({ kg:'', cardio:false, training:'' })),
+    essen:'', training:'', wohlbefinden:'', schlaf:'', fragen:''
+  };
+}
+
+function load(){
+  let saved = null;
+  try {
+    const raw = localStorage.getItem(STORE_KEY);
+    if (raw) saved = JSON.parse(raw);
+  } catch(e) { saved = null; }
+
+  if (!saved) {
+    state = defaultState(todayIso());
+  } else {
+    state = saved;
+    const weekEnd = addDays(state.weekStart, 6);
+    const today = new Date(todayIso()+'T00:00:00');
+    if (today > weekEnd) {
+      const newStart = isoDate(addDays(isoDate(weekEnd), 1));
+      state = defaultState(newStart);
+      save();
+    }
+  }
+  render();
+  renderPhotos();
+}
+
+function save(){
+  try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); }
+  catch(e) { console.error('Speichern fehlgeschlagen', e); }
+}
+
+function render(){
+  document.getElementById('essen').value = state.essen;
+  document.getElementById('training').value = state.training;
+  document.getElementById('wohlbefinden').value = state.wohlbefinden;
+  document.getElementById('schlaf').value = state.schlaf;
+  document.getElementById('fragen').value = state.fragen;
+
+  const startD = new Date(state.weekStart+'T00:00:00');
+  const endD = addDays(state.weekStart, 6);
+  document.getElementById('weekRange').textContent =
+    startD.getDate()+'.'+(startD.getMonth()+1)+'. – '+endD.getDate()+'.'+(endD.getMonth()+1)+'.'+endD.getFullYear();
+
+  const todayD = new Date(todayIso()+'T00:00:00');
+  const dayIndexToday = Math.round((todayD - startD) / 86400000);
+  document.getElementById('dayCount').textContent =
+    (dayIndexToday >= 0 && dayIndexToday < 7) ? 'Tag '+(dayIndexToday+1)+' von 7' : 'außerhalb der Woche';
+
+  const rowsEl = document.getElementById('rows');
+  rowsEl.innerHTML = '';
+  state.days.forEach((day, i) => {
+    const d = addDays(state.weekStart, i);
+    const isToday = isoDate(d) === todayIso();
+    const row = document.createElement('div');
+    row.className = 'row' + (isToday ? ' today' : '');
+    row.innerHTML = `
+      <div class="daylabel"><span class="wd">${WD[d.getDay()]}.</span><span class="full">${d.getDate()}.${d.getMonth()+1}.</span></div>
+      <input type="number" step="0.1" inputmode="decimal" placeholder="kg" value="${day.kg}" data-idx="${i}" data-field="kg">
+      <div class="cardio-toggle ${day.cardio ? 'on' : 'off'}" data-idx="${i}">${day.cardio ? '✅' : '❌'}</div>
+      <input type="text" placeholder="rest / pull / push …" value="${day.training}" data-idx="${i}" data-field="training">
+    `;
+    rowsEl.appendChild(row);
+  });
+
+  rowsEl.querySelectorAll('input[data-field]').forEach(inp => {
+    inp.addEventListener('input', (e) => {
+      const idx = +e.target.dataset.idx;
+      const field = e.target.dataset.field;
+      state.days[idx][field] = e.target.value;
+      save();
+    });
+  });
+  rowsEl.querySelectorAll('.cardio-toggle').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const idx = +e.target.dataset.idx;
+      state.days[idx].cardio = !state.days[idx].cardio;
+      save();
+      render();
+    });
+  });
+
+  ['essen','training','wohlbefinden','schlaf','fragen'].forEach(id => {
+    document.getElementById(id).oninput = (e) => { state[id] = e.target.value; save(); };
+  });
+}
+
+function renderPhotos(){
+  const grid = document.getElementById('photogrid');
+  grid.innerHTML = '';
+  PHOTO_LABELS.forEach((label, i) => {
+    const slot = document.createElement('div');
+    slot.className = 'photo-slot' + (photos[i] ? ' filled' : '');
+    if (photos[i]) {
+      const url = URL.createObjectURL(photos[i]);
+      slot.innerHTML = `<img src="${url}" alt="${label}">`;
+    } else {
+      slot.innerHTML = `<span>${label}</span>`;
+    }
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.capture = 'environment';
+    input.addEventListener('change', (e) => {
+      if (e.target.files && e.target.files[0]) {
+        photos[i] = e.target.files[0];
+        renderPhotos();
+      }
+    });
+    slot.appendChild(input);
+    grid.appendChild(slot);
+  });
+}
+
+function buildText(){
+  let lines = [];
+  lines.push('Guten Morgen Erdem');
+  lines.push('Ich wünsche dir einen wundervollen Tag');
+  lines.push('');
+  lines.push('Verlauf des Körpergewichts und Trainings');
+  lines.push('');
+  lines.push('Tägliche Gewichtsmessungen und Trainingsaktivitäten');
+  lines.push('___________________');
+  state.days.forEach((day, i) => {
+    const d = addDays(state.weekStart, i);
+    const kg = day.kg ? day.kg+' kg' : '– kg';
+    const mark = day.cardio ? '✅️' : '❌️';
+    const training = day.training || '–';
+    lines.push(formatFull(d)+' '+state.time+' '+kg+' '+mark+' '+training);
+  });
+  lines.push('');
+  lines.push('Cardio:');
+  lines.push('✅️ heißt an diesem Tag habe ich cardio gemacht ');
+  lines.push('❌️ heißt, kein cardio an diesem Tag 🙈');
+  lines.push('');
+  lines.push('Essen:');
+  lines.push(state.essen || '–');
+  lines.push('');
+  lines.push('Training:');
+  lines.push(state.training || '–');
+  lines.push('');
+  lines.push('');
+  lines.push('Wohlbefinden und Schlaf:');
+  lines.push('Wohlbefinden ' + (state.wohlbefinden || '–'));
+  lines.push('Schlaf ' + (state.schlaf || '–'));
+  lines.push('');
+  lines.push('Meine Fragen:');
+  lines.push(state.fragen || '');
+  return lines.join('\n');
+}
+
+async function copyToClipboard(text){
+  try { await navigator.clipboard.writeText(text); return true; }
+  catch(e) {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    return true;
+  }
+}
+
+function showToast(msg){
+  const toast = document.getElementById('toast');
+  toast.textContent = msg;
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 1600);
+}
+
+async function copyText(){
+  await copyToClipboard(buildText());
+  showToast('Text kopiert');
+}
+
+async function shareAll(){
+  const text = buildText();
+  const files = photos.filter(Boolean);
+
+  if (navigator.share) {
+    try {
+      const shareData = { title: 'Trainings-Log', text: text };
+      if (files.length && navigator.canShare && navigator.canShare({ files })) {
+        shareData.files = files;
+      }
+      await navigator.share(shareData);
+      return;
+    } catch(e) {
+      if (e.name === 'AbortError') return;
+      // fällt durch zu Fallback
+    }
+  }
+
+  // Fallback: Text kopieren, Hinweis auf manuelles Foto-Anhängen
+  await copyToClipboard(text);
+  showToast(files.length ? 'Text kopiert – Fotos manuell anhängen' : 'Text kopiert');
+}
+
+async function startNewWeek(){
+  const endD = addDays(state.weekStart, 6);
+  const newStart = isoDate(addDays(isoDate(endD), 1));
+  state = defaultState(newStart);
+  save();
+  render();
+}
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  });
+}
+
+load();
+</script>
+</body>
+</html>

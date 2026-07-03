@@ -6,21 +6,21 @@
 <title>Trainings-Log</title>
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon-192.png">
-<meta name="theme-color" content="#181816">
+<meta name="theme-color" content="#000000">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
   :root{
-    --bg:#181816;
-    --card:#232320;
-    --card2:#2b2b27;
-    --line:#3a3a35;
+    --bg:#000000;
+    --card:#0d0d0d;
+    --card2:#161616;
+    --line:#2e2e2e;
     --text:#f2f1ea;
-    --muted:#918f84;
-    --accent:#ff6a3d;
-    --accent-dim:#4a2f22;
+    --muted:#8f8f8f;
+    --accent:#39ff14;
+    --accent-dim:#0f3309;
     --ok:#5ec98f;
   }
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
@@ -55,7 +55,7 @@
   .photo-slot input{position:absolute;inset:0;opacity:0;cursor:pointer;}
   .photo-slot.filled{border-style:solid;border-color:var(--ok);}
   .actions{display:flex;gap:10px;margin-top:18px;}
-  button.main{flex:1;background:var(--accent);color:#1a1108;border:none;border-radius:10px;padding:14px;font-size:14px;font-weight:700;font-family:'Space Grotesk',sans-serif;cursor:pointer;}
+  button.main{flex:1;background:var(--accent);color:#04140a;border:none;border-radius:10px;padding:14px;font-size:14px;font-weight:700;font-family:'Space Grotesk',sans-serif;cursor:pointer;}
   button.ghost{background:transparent;color:var(--muted);border:1px solid var(--line);border-radius:10px;padding:14px;font-size:13px;cursor:pointer;}
   .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--ok);color:#0d1f16;padding:10px 18px;border-radius:20px;font-size:13px;font-weight:600;opacity:0;pointer-events:none;transition:opacity 0.2s;z-index:50;}
   .toast.show{opacity:1;}

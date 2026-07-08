@@ -60,6 +60,15 @@
   .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--ok);color:#0d1f16;padding:10px 18px;border-radius:20px;font-size:13px;font-weight:600;opacity:0;pointer-events:none;transition:opacity 0.2s;z-index:50;}
   .toast.show{opacity:1;}
   .autonote{font-size:11px;color:var(--muted);text-align:center;margin-top:14px;line-height:1.5;}
+  .dangerzone{margin-top:28px;padding-top:16px;border-top:1px solid var(--line);}
+  button.danger{width:100%;background:transparent;color:#ff5c5c;border:1px solid #5c2626;border-radius:10px;padding:12px;font-size:13px;font-weight:600;cursor:pointer;}
+  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.75);display:none;align-items:center;justify-content:center;padding:20px;z-index:100;}
+  .modal-box{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px;max-width:360px;width:100%;}
+  .modal-title{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:16px;margin-bottom:8px;}
+  .modal-text{font-size:13px;color:var(--muted);line-height:1.5;margin-bottom:18px;}
+  .modal-actions{display:flex;gap:10px;}
+  .modal-actions .ghost{flex:1;padding:12px;}
+  .modal-actions .danger{flex:1;}
 </style>
 </head>
 <body>
@@ -72,7 +81,6 @@
       <div class="range" id="weekRange">–</div>
       <div class="daycount" id="dayCount">–</div>
     </div>
-    <button class="ghost" style="padding:8px 12px;font-size:12px;" onclick="startNewWeek()">Woche neu starten</button>
   </div>
 
   <div class="rows" id="rows"></div>
@@ -115,8 +123,23 @@
     <button class="ghost" style="flex:1;" onclick="copyText()">Nur Text kopieren</button>
   </div>
   <div class="autonote">
-    Speichert automatisch auf diesem Gerät · Text setzt sich nach 7 Tagen selbst zurück<br>
+    Speichert automatisch auf diesem Gerät · kein automatischer Reset<br>
     Fotos werden nicht gespeichert — bei jedem Versand neu auswählen
+  </div>
+
+  <div class="dangerzone">
+    <button class="danger" onclick="openResetModal()">Woche zurücksetzen</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="resetModal">
+  <div class="modal-box">
+    <div class="modal-title">Wirklich zurücksetzen?</div>
+    <div class="modal-text">Alle Einträge dieser Woche (Kg, Cardio, Training, Notizen) werden gelöscht und auf die aktuelle Woche neu gestartet. Das kann nicht rückgängig gemacht werden.</div>
+    <div class="modal-actions">
+      <button class="ghost" onclick="closeResetModal()">Abbrechen</button>
+      <button class="danger" onclick="confirmReset()">Zurücksetzen</button>
+    </div>
   </div>
 </div>
 
@@ -157,13 +180,6 @@ function load(){
     state = defaultState(todayIso());
   } else {
     state = saved;
-    const weekEnd = addDays(state.weekStart, 6);
-    const today = new Date(todayIso()+'T00:00:00');
-    if (today > weekEnd) {
-      const newStart = isoDate(addDays(isoDate(weekEnd), 1));
-      state = defaultState(newStart);
-      save();
-    }
   }
   render();
   renderPhotos();
@@ -359,6 +375,7 @@ async function shareAll(){
         shareData.files = files;
       }
       await navigator.share(shareData);
+      advanceWeek();
       return;
     } catch(e) {
       if (e.name === 'AbortError') return;
@@ -366,17 +383,39 @@ async function shareAll(){
     }
   }
 
-  // Fallback: Text kopieren, Hinweis auf manuelles Foto-Anhängen
+  // Fallback: Text kopieren, Hinweis auf manuelles Foto-Anhängen — kein automatischer Wochenwechsel,
+  // da nicht sicher ist, ob der Versand tatsächlich stattgefunden hat
   await copyToClipboard(text);
   showToast(files.length ? 'Text kopiert – Fotos manuell anhängen' : 'Text kopiert');
 }
 
-async function startNewWeek(){
+function advanceWeek(){
   const endD = addDays(state.weekStart, 6);
   const newStart = isoDate(addDays(isoDate(endD), 1));
   state = defaultState(newStart);
   save();
   render();
+  renderPhotos();
+  photos = [null, null, null, null];
+  showToast('Gesendet – neue Woche gestartet');
+}
+
+function openResetModal(){
+  document.getElementById('resetModal').style.display = 'flex';
+}
+
+function closeResetModal(){
+  document.getElementById('resetModal').style.display = 'none';
+}
+
+function confirmReset(){
+  state = defaultState(todayIso());
+  save();
+  render();
+  photos = [null, null, null, null];
+  renderPhotos();
+  closeResetModal();
+  showToast('Zurückgesetzt');
 }
 
 if ('serviceWorker' in navigator) {

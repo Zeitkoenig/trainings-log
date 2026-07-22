@@ -135,7 +135,7 @@
 <div class="modal-overlay" id="resetModal">
   <div class="modal-box">
     <div class="modal-title">Wirklich zurücksetzen?</div>
-    <div class="modal-text">Alle Einträge dieser Woche (Kg, Cardio, Training, Notizen) werden gelöscht und auf die aktuelle Woche neu gestartet. Das kann nicht rückgängig gemacht werden.</div>
+    <div class="modal-text">Das Gewicht vom letzten Mittwoch wird als erster Tag der neuen Woche übernommen. Alles andere (Cardio, Training, Notizen) wird geleert und auf die neue Woche neu gestartet. Das kann nicht rückgängig gemacht werden.</div>
     <div class="modal-actions">
       <button class="ghost" onclick="closeResetModal()">Abbrechen</button>
       <button class="danger" onclick="confirmReset()">Zurücksetzen</button>
@@ -150,6 +150,7 @@ const WD = ['So','Mo','Di','Mi','Do','Fr','Sa'];
 const MONTHS = ['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];
 const STORE_KEY = 'weekly-tracker-v1';
 const PHOTO_LABELS = ['Vorne','Rücken','Seite links','Seite rechts'];
+const DAY_COUNT = 8;
 
 let state = null;
 let photos = [null, null, null, null];
@@ -164,7 +165,7 @@ function defaultState(startIso){
   return {
     weekStart: startIso,
     time: '08:30',
-    days: Array.from({length:7}, () => ({ kg:'', cardio:false, training:'' })),
+    days: Array.from({length:DAY_COUNT}, () => ({ kg:'', cardio:false, training:'' })),
     essen:'', training:'', wohlbefinden:'', schlaf:'', fragen:''
   };
 }
@@ -180,6 +181,10 @@ function load(){
     state = defaultState(todayIso());
   } else {
     state = saved;
+    // Migration: alte 7-Tage-Woche auf 8 Tage erweitern
+    while (state.days.length < DAY_COUNT) {
+      state.days.push({ kg:'', cardio:false, training:'' });
+    }
   }
   render();
   renderPhotos();
@@ -198,14 +203,14 @@ function render(){
   document.getElementById('fragen').value = state.fragen;
 
   const startD = new Date(state.weekStart+'T00:00:00');
-  const endD = addDays(state.weekStart, 6);
+  const endD = addDays(state.weekStart, DAY_COUNT-1);
   document.getElementById('weekRange').textContent =
     startD.getDate()+'.'+(startD.getMonth()+1)+'. – '+endD.getDate()+'.'+(endD.getMonth()+1)+'.'+endD.getFullYear();
 
   const todayD = new Date(todayIso()+'T00:00:00');
   const dayIndexToday = Math.round((todayD - startD) / 86400000);
   document.getElementById('dayCount').textContent =
-    (dayIndexToday >= 0 && dayIndexToday < 7) ? 'Tag '+(dayIndexToday+1)+' von 7' : 'außerhalb der Woche';
+    (dayIndexToday >= 0 && dayIndexToday < DAY_COUNT) ? 'Tag '+(dayIndexToday+1)+' von '+DAY_COUNT : 'außerhalb der Woche';
 
   const rowsEl = document.getElementById('rows');
   rowsEl.innerHTML = '';
@@ -290,7 +295,6 @@ function renderPhotos(){
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = 'image/*';
-    input.capture = 'environment';
     input.addEventListener('change', (e) => {
       if (e.target.files && e.target.files[0]) {
         photos[i] = e.target.files[0];
@@ -375,7 +379,6 @@ async function shareAll(){
         shareData.files = files;
       }
       await navigator.share(shareData);
-      advanceWeek();
       return;
     } catch(e) {
       if (e.name === 'AbortError') return;
@@ -383,21 +386,24 @@ async function shareAll(){
     }
   }
 
-  // Fallback: Text kopieren, Hinweis auf manuelles Foto-Anhängen — kein automatischer Wochenwechsel,
-  // da nicht sicher ist, ob der Versand tatsächlich stattgefunden hat
+  // Fallback: Text kopieren, Hinweis auf manuelles Foto-Anhängen
   await copyToClipboard(text);
   showToast(files.length ? 'Text kopiert – Fotos manuell anhängen' : 'Text kopiert');
 }
 
-function advanceWeek(){
-  const endD = addDays(state.weekStart, 6);
-  const newStart = isoDate(addDays(isoDate(endD), 1));
-  state = defaultState(newStart);
+// Startet die neue Woche am letzten Tag der aktuellen (dem 2. Mittwoch),
+// übernimmt NUR dessen Gewicht als Tag 1, Rest bleibt leer.
+function startNextWeekKeepingWeight(){
+  const lastDay = state.days[DAY_COUNT-1];
+  const carriedKg = lastDay ? lastDay.kg : '';
+  const newStart = isoDate(addDays(state.weekStart, DAY_COUNT-1)); // = letzter Mittwoch
+  const fresh = defaultState(newStart);
+  fresh.days[0].kg = carriedKg;
+  state = fresh;
   save();
+  photos = [null, null, null, null];
   render();
   renderPhotos();
-  photos = [null, null, null, null];
-  showToast('Gesendet – neue Woche gestartet');
 }
 
 function openResetModal(){
@@ -409,13 +415,9 @@ function closeResetModal(){
 }
 
 function confirmReset(){
-  state = defaultState(todayIso());
-  save();
-  render();
-  photos = [null, null, null, null];
-  renderPhotos();
+  startNextWeekKeepingWeight();
   closeResetModal();
-  showToast('Zurückgesetzt');
+  showToast('Neue Woche – Gewicht übernommen');
 }
 
 if ('serviceWorker' in navigator) {

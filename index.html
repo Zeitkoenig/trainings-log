@@ -135,7 +135,7 @@
 <div class="modal-overlay" id="resetModal">
   <div class="modal-box">
     <div class="modal-title">Wirklich zurücksetzen?</div>
-    <div class="modal-text">Das Gewicht vom letzten Mittwoch wird als erster Tag der neuen Woche übernommen. Alles andere (Cardio, Training, Notizen) wird geleert und auf die neue Woche neu gestartet. Das kann nicht rückgängig gemacht werden.</div>
+    <div class="modal-text">Die Woche startet neu am Mittwoch dieser Woche (nach heutigem Datum). Ein bereits eingetragenes Gewicht für diesen Mittwoch wird übernommen, alles andere (Cardio, Training, Notizen) wird geleert. Das kann nicht rückgängig gemacht werden.</div>
     <div class="modal-actions">
       <button class="ghost" onclick="closeResetModal()">Abbrechen</button>
       <button class="danger" onclick="confirmReset()">Zurücksetzen</button>
@@ -391,12 +391,27 @@ async function shareAll(){
   showToast(files.length ? 'Text kopiert – Fotos manuell anhängen' : 'Text kopiert');
 }
 
-// Startet die neue Woche am letzten Tag der aktuellen (dem 2. Mittwoch),
-// übernimmt NUR dessen Gewicht als Tag 1, Rest bleibt leer.
+// Findet den Mittwoch DIESER Kalenderwoche relativ zu heute:
+// ist heute Mittwoch -> heute, sonst der letzte vergangene Mittwoch.
+// getDay(): So=0 Mo=1 Di=2 Mi=3 Do=4 Fr=5 Sa=6
+function currentWednesdayIso(){
+  const d = new Date(todayIso()+'T00:00:00');
+  const diff = (d.getDay() - 3 + 7) % 7;
+  d.setDate(d.getDate() - diff);
+  return isoDate(d);
+}
+
+// Reset richtet sich am heutigen Datum aus: neue Woche startet am Mittwoch
+// dieser Woche. Dadurch kein Wegdriften in die Zukunft, egal wie oft man klickt.
+// Gewicht wird übernommen, falls für diesen Mittwoch schon ein Wert existiert.
 function startNextWeekKeepingWeight(){
-  const lastDay = state.days[DAY_COUNT-1];
-  const carriedKg = lastDay ? lastDay.kg : '';
-  const newStart = isoDate(addDays(state.weekStart, DAY_COUNT-1)); // = letzter Mittwoch
+  const newStart = currentWednesdayIso();
+  // Gewicht des neuen Start-Mittwochs aus den bisherigen Tagen holen, falls vorhanden
+  let carriedKg = '';
+  state.days.forEach((day, i) => {
+    const dIso = isoDate(addDays(state.weekStart, i));
+    if (dIso === newStart && day.kg) carriedKg = day.kg;
+  });
   const fresh = defaultState(newStart);
   fresh.days[0].kg = carriedKg;
   state = fresh;
